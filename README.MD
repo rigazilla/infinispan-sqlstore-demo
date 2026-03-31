@@ -18,7 +18,18 @@ This starts:
 - Infinispan servers (LON on port 11222, NYC on port 31222)
 - PostgreSQL database on port 5432
 
-### 2. Start Retail Catalogue
+### 2. Register Protobuf Schema
+
+Register the Protobuf schema with Infinispan:
+
+```shell
+cd schema
+./create-proto.sh
+```
+
+This uploads the retail schema to Infinispan's protobuf metadata cache.
+
+### 3. Start Retail Catalogue
 
 The retail-catalogue service creates the database schema and populates sample data:
 
