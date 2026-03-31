@@ -50,23 +50,22 @@ Before starting your implementation, ensure:
 
 ### IMPORTANT: Use OpenAPI Schema
 
-**You MUST fetch and use the OpenAPI schema to discover all endpoints.**
+All the needed Infinispan operations are describe by the openAPI schema. Have a look at https://swagger.io/specification/
+for more info.
 
-```bash
-# Fetch the OpenAPI schema
-curl -s http://localhost:11222/rest/v3/openapi > infinispan-api.json
+**You MUST fetch and use the OpenAPI schema to discover all endpoints you need in the code.**
+OpenAPI schema is avalable as a json file infinispan-api.json
 ```
 
-DO NOT hardcode endpoint paths. Instead:
-1. Parse the OpenAPI schema from `http://localhost:11222/rest/v3/openapi`
-2. Look up operations by their `operationId` (e.g., `getCacheSize`, `reindex`, `queryCache`)
-3. Build the correct endpoint paths from the schema
+1. Use the OpenAPI schema to get the endpoint for the operation you need
+2. Build the correct endpoint paths from the schema
 
 **Example operation IDs you'll need**:
 - `postCache` or `putCache` - Create/update cache
 - `getCacheSize` - Get number of entries in cache
 - `reindex` - Rebuild search indexes
-- `queryCache` - Execute Ickle queries
+- `postQueryCache` - Execute Ickle queries (RECOMMENDED - use POST method)
+- `queryCache` - Execute Ickle queries (alternative GET method)
 
 ### Testing Connection
 
@@ -184,18 +183,38 @@ from retail.RetailProductValue where name: (+'Party') and stock >= 50
 
 ### 3. Query Execution
 
-**Use the OpenAPI schema to find the `queryCache` operation.**
+**RECOMMENDED: Use POST method for queries to avoid URL encoding issues with special characters.**
 
-Query parameters (from OpenAPI schema):
+**Use the OpenAPI schema to find the `postQueryCache` operation.**
+
+**Method**: POST
+**Endpoint**: `/rest/v3/caches/{cacheName}/_search`
+**Content-Type**: `application/json`
+
+Request body (JSON):
+```json
+{
+  "query": "from retail.RetailProductValue where name: (+'Party')",
+  "max_results": 10000,
+  "start_offset": 0,
+  "hit_count_accuracy": 0
+}
+```
+
+Fields:
 - `query` (required): The Ickle query string
-- `max_results` (optional): Maximum number of results
-- `offset` (optional): Result offset for pagination
+- `max_results` (optional): Maximum number of results (use 10000 or less, NOT MAX_INT)
+- `start_offset` (optional): Result offset for pagination
 - `hit_count_accuracy` (optional): Hit count accuracy
 
-**CRITICAL**: `max_results` parameter:
-- DO NOT use `Number.MAX_SAFE_INTEGER` or equivalent large numbers
-- Infinispan cannot parse integers > ~2^31
-- Use reasonable limit like **10000**
+**Why POST instead of GET?**
+- Avoids URL encoding issues with special characters in Ickle queries (parentheses, quotes, plus signs)
+- More reliable across different HTTP client libraries
+- Handles complex queries without digest auth complications
+- JSON body is easier to construct than URL query parameters
+
+**Alternative: GET method**
+If you prefer GET, use the `queryCache` operation. Note: Some HTTP client libraries have issues with digest authentication and URL-encoded special characters. Test with curl first.
 
 **Response format**:
 ```json
@@ -409,12 +428,26 @@ Expected result: `18` (or similar number) for catalogue-table-store
 
 ### 4. Test Direct Query
 
-Use the `queryCache` operation from the OpenAPI schema with:
-- Path parameter: `cacheName` = `catalogue-table-store`
-- Query parameter: `query` = `from retail.RetailProductValue where name: (+'Party')`
-- Query parameter: `max_results` = `10`
+**Using POST (recommended):**
 
-Should return products with "Party" in the name.
+```bash
+curl --digest -u admin:secret -X POST \
+  "http://localhost:11222/rest/v3/caches/catalogue-table-store/_search" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "from retail.RetailProductValue where name: ('"'"'+'Party'"'"')",
+    "max_results": 10
+  }'
+```
+
+**Or using GET (alternative):**
+
+```bash
+curl --digest -u admin:secret \
+  "http://localhost:11222/rest/v3/caches/catalogue-table-store/_search?query=from+retail.RetailProductValue+where+name:+(+'Party')&max_results=10"
+```
+
+Both should return products with "Party" in the name.
 
 ### 5. Test Your Application Endpoints
 
@@ -445,19 +478,21 @@ curl "http://localhost:8180/sales?country=Spain"
 
 1. **Not Using OpenAPI Schema**: Hardcoding endpoints will break. Always fetch and parse the OpenAPI schema to discover correct endpoints.
 
-2. **Digest Auth without SHA-256**: Most libraries default to MD5. Must explicitly specify SHA-256.
+2. **Using GET instead of POST for queries**: Use POST method (`postQueryCache` operation) to avoid URL encoding issues with special characters in Ickle queries.
 
-3. **Wrong Query Syntax**: Ickle is NOT SQL. Full-text search requires `name: (+'term')` format.
+3. **Digest Auth without SHA-256**: Most libraries default to MD5. Must explicitly specify SHA-256.
 
-4. **Large max_results**: Use 10000 or less, not MAX_INT.
+4. **Wrong Query Syntax**: Ickle is NOT SQL. Full-text search requires `name: (+'term')` format.
 
-5. **Missing Quotes in Queries**: `name: (+Party)` fails, must be `name: (+'Party')`
+5. **Large max_results**: Use 10000 or less, not MAX_INT.
 
-6. **Not Checking Cache Existence**: Always check if cache exists (HEAD returns 200 or 204) before creating to avoid errors.
+6. **Missing Quotes in Queries**: `name: (+Party)` fails, must be `name: (+'Party')`
 
-7. **Forgetting to Reindex**: After cache creation, trigger reindex to populate search indexes.
+7. **Not Checking Cache Existence**: Always check if cache exists (HEAD returns 200 or 204) before creating to avoid errors.
 
-8. **Wrong Content-Type**: Cache creation requires `Content-Type: application/xml`
+8. **Forgetting to Reindex**: After cache creation, trigger reindex to populate search indexes.
+
+9. **Wrong Content-Type**: Cache creation requires `Content-Type: application/xml`, query POST requires `Content-Type: application/json`
 
 ## Reference Implementations
 
@@ -477,8 +512,9 @@ Study these for language-specific examples:
   - Shows Spring integration patterns
 
 - **Node.js/Express**: `inmemory-catalogue-nodejs/`
-  - Uses REST API v3 (closest to what you'll implement)
-  - Shows digest-fetch library with SHA-256
+  - Uses REST API v3 with POST method for queries (recommended approach)
+  - Custom Digest Auth implementation with SHA-256
+  - Shows proper error handling and OpenAPI integration
   - Reference for REST endpoint patterns
 
 ## Additional Resources

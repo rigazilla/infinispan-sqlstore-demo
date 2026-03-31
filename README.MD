@@ -47,10 +47,9 @@ curl http://localhost:8080/commands
 
 ## Available Implementations
 
-This demo provides three implementations of the in-memory catalogue service:
+This demo provides multiple implementations of the in-memory catalogue service:
 
-- **inmemory-catalogue-quarkus** - Quarkus implementation
-- **inmemory-catalogue-spring-boot** - Spring Boot 3 implementation
-- **inmemory-catalogue-nodejs** - Node.js implementation
+- **inmemory-catalogue-quarkus** - Quarkus implementation (HotRod client)
+- **inmemory-catalogue-spring-boot** - Spring Boot 3 implementation (HotRod client)
 
 Refer to each directory's README for specific setup instructions.
