@@ -60,20 +60,25 @@ OpenAPI schema is avalable as a json file infinispan-api.json
 ```
 
 1. Use the OpenAPI schema to get the endpoint for the operation you need
+2. The operationId filed in the json schema is the name of the operation you're looking for
 2. Build the correct endpoint paths from the schema
+3. Action are not specified via a query param, i.e. '?action=', they are part of the endpoint prepend by an '_' instead, i.e. '{cacheName}/_search'
+4. You must use these endpoint also for curl dev and testing commands
 
-**Example operation IDs you'll need**:
+**Operation IDs you'll need**:
 - `postCache` or `putCache` - Create/update cache
 - `getCacheSize` - Get number of entries in cache
 - `reindex` - Rebuild search indexes
 - `postQueryCache` - Execute Ickle queries (RECOMMENDED - use POST method)
 - `queryCache` - Execute Ickle queries (alternative GET method)
+- `getContainerHealthStatus - Get the container health status
+- `cacheExists` - Determines if a cache exists
 
 ### Testing Connection
 
 ```bash
 # Should return: HEALTHY
-curl http://localhost:11222/rest/v3/container/health/status
+curl {getContainerHealthStatus endpoint}
 ```
 
 ## Data Schema
@@ -99,7 +104,7 @@ Composite key for purchased products:
 
 ## Cache Configuration
 
-Your implementation MUST create two caches on startup, if they do not already exist.
+If caches doesn't not exists, your implementation MUST create two caches on startup.
 You MUST use cache configurations available in inmemory-catalogue-quarkus/src/main/resources
 
 ### Cache 1: catalogue-table-store
@@ -142,7 +147,7 @@ Consult the OpenAPI schema for exact endpoints. The typical flow:
    - 409 or 400 with "already exists" → Race condition, safe to ignore
 
 3. CRITICAL: Trigger reindex after cache creation
-   - POST to /_reindex endpoint (see section 5 below)
+   - POST to {reindex endpoint} (see section 5 below)
    - SQL Store caches don't auto-populate indexes
    - Without this step, all queries will return empty results!
 ```
@@ -201,7 +206,7 @@ from retail.RetailProductValue where name: (+'Party') and stock >= 50
 **Use the OpenAPI schema to find the `postQueryCache` operation.**
 
 **Method**: POST
-**Endpoint**: `/rest/v3/caches/{cacheName}/_search`
+**Endpoint**: {queryCache endpoint}
 **Content-Type**: `application/json`
 
 Request body (JSON):
@@ -264,8 +269,8 @@ SQL Store caches with indexing enabled do not automatically populate search inde
 
 **Example**:
 ```bash
-curl --digest -u admin:secret -X POST \
-  "http://localhost:11222/rest/v3/caches/catalogue-table-store/_reindex"
+curl --digest -u admin:secret -X POST {reindex endpoint}
+  
 ```
 
 **When to reindex**:
@@ -448,30 +453,7 @@ Use the `getCacheSize` operation from the OpenAPI schema.
 
 Expected result: `18` (or similar number) for catalogue-table-store
 
-### 4. Test Direct Query
-
-**Using POST (recommended):**
-
-```bash
-curl --digest -u admin:secret -X POST \
-  "http://localhost:11222/rest/v3/caches/catalogue-table-store/_search" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "from retail.RetailProductValue where name: ('"'"'+'Party'"'"')",
-    "max_results": 10
-  }'
-```
-
-**Or using GET (alternative):**
-
-```bash
-curl --digest -u admin:secret \
-  "http://localhost:11222/rest/v3/caches/catalogue-table-store/_search?query=from+retail.RetailProductValue+where+name:+(+'Party')&max_results=10"
-```
-
-Both should return products with "Party" in the name.
-
-### 5. Test Your Application Endpoints
+### 4. Test Your Application Endpoints
 
 ```bash
 # Health check
