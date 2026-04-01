@@ -16,27 +16,6 @@ Infinispan Cache Servers
 PostgreSQL Database
 ```
 
-## Prerequisites
-
-Before starting your implementation, ensure:
-
-1. **Infrastructure is running**:
-   ```bash
-   docker compose up -d
-   ```
-
-2. **Protobuf schema is registered**:
-   ```bash
-   cd schema
-   ./create-proto.sh
-   ```
-
-3. **Database schema is initialized** (retail-catalogue must run once):
-   ```bash
-   cd retail-catalogue
-   mvn quarkus:dev -Dquarkus.devservices.enabled=false
-   ```
-
 ## Infinispan Connection
 
 ### REST API Details
@@ -73,6 +52,7 @@ OpenAPI schema is avalable as a json file infinispan-api.json
 - `queryCache` - Execute Ickle queries (alternative GET method)
 - `getContainerHealthStatus - Get the container health status
 - `cacheExists` - Determines if a cache exists
+- `getCacheSize` - Retrieves the number of entries in the cache
 
 ### Testing Connection
 

@@ -1,13 +1,47 @@
 [![Infinispan](https://design.jboss.org/infinispan/logo/final/PNG/infinispan_logo_rgb_lightbluewhite_darkblue_600px.png)](https://infinispan.org/)
 
-# Infinispan SQL Store Demo
+# Infinispan SQL Store Demo - OpenAPI Edition
 
 This demo illustrates how to build a high-performance product catalogue by integrating a traditional SQL-based backend with a distributed in-memory cache using Infinispan.
 
-## Quick Start
+**This branch (`openapi-demo`) is a derived work that demonstrates how easy it is to implement applications using the new Infinispan 16.1 OpenAPI interface, with assistance from an AI coding agent.**
 
-### 1. Start Infrastructure
+## AI Assistant and OpenAPI for polyglot development
 
+This demo serves as a practical example of how OpenAPI could be a good choice for vibe-coding polyglot applications. Key benefits include:
+
+- **Rapid Prototyping**: AI agents can quickly understand and implement OpenAPI specifications
+- **Code Generation**: Automatic generation of client code from OpenAPI definitions
+- **Multi-language Support**: Seamless implementation across different technology stacks
+
+### OpenAPI's Role in AI-Assisted Development
+
+Infinispan 16.1's OpenAPI interface provides detailed API descriptions that help AI agents:
+
+- Parse specifications to understand operations
+- Generate precise client code
+- Handle data types and responses accurately
+- Work autonomously with clear contracts
+
+This demo shows productivity gains from AI-assisted development using OpenAPI.
+
+### Polyglot Architecture
+
+OpenAPI's language-agnostic nature enables applications to be written in any programming language:
+
+- **Language Independence**: Implement clients in Java, Python, Go, JavaScript, or any language with HTTP support
+- **Consistent Interfaces**: Same API contract across all implementations
+- **Technology Flexibility**: Choose the best language for each component
+
+## Vibe Coding
+
+Tell your coding assistant to read the instructions in the [AI_CODING_INMEMORY_CATALOG.md](AI_CODING_INMEMORY_CATALOG.md) and ask them to vibe-code an inmemory catalog application in your preferred programming language using the already available Spring Boot and Quarkus implementations as an additional reference.
+
+## Testing
+
+Before testing the application you need to start the rest of the system.
+
+### Start Infinispan and PostgreSQL
 Start Infinispan and PostgreSQL using Docker Compose:
 
 ```shell
@@ -18,7 +52,9 @@ This starts:
 - Infinispan servers (LON on port 11222, NYC on port 31222)
 - PostgreSQL database on port 5432
 
-### 2. Register Protobuf Schema
+### Setup Schemas
+
+The system setup is out of the scope of the demo, so these manual steps are needed.
 
 Register the Protobuf schema with Infinispan:
 
@@ -27,10 +63,6 @@ cd schema
 ./create-proto.sh
 ```
 
-This uploads the retail schema to Infinispan's protobuf metadata cache.
-
-### 3. Start Retail Catalogue
-
 The retail-catalogue service creates the database schema and populates sample data:
 
 ```shell
@@ -38,29 +70,4 @@ cd retail-catalogue
 mvn quarkus:dev -Dquarkus.devservices.enabled=false
 ```
 
-The service runs on **http://localhost:8080**
-
-You can verify it's working:
-```shell
-curl http://localhost:8080/commands
-```
-
-## Available Implementations
-
-This demo provides multiple implementations of the in-memory catalogue service:
-
-- **inmemory-catalogue-quarkus** - Quarkus implementation (HotRod client)
-- **inmemory-catalogue-spring-boot** - Spring Boot 3 implementation (HotRod client)
-- **inmemory-catalogue-nodejs** - Node.js/Express implementation (REST API v3) ⭐ NEW
-
-Refer to each directory's README for specific setup instructions.
-
-### Quick Start - Node.js Implementation
-
-```shell
-cd inmemory-catalogue-nodejs
-npm install
-npm start
-```
-
-The service runs on **http://localhost:8180**
+Once everything is running ask the assistant to run the application and test it.
