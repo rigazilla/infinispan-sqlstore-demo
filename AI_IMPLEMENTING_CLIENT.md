@@ -41,12 +41,14 @@ Before starting your implementation, ensure:
 
 ### REST API Details
 
-- **Base URL**: `http://localhost:11222/rest/v3`
-- **Authentication**: HTTP Digest Authentication
+- **Base URL**: `http://localhost:11222`
+- **Authentication**: HTTP Digest Authentication (DIGEST auth is REQUIRED, BASIC authentication is NOT supported)
   - Username: `admin`
   - Password: `secret`
   - **CRITICAL**: Algorithm MUST be `SHA-256` (not MD5 or other defaults)
 - **OpenAPI Specification**: `http://localhost:11222/rest/v3/openapi`
+
+**IMPORTANT**: Use `http://localhost:11222` as the base URL (without `/rest/v3`). The OpenAPI schema returns full paths like `/rest/v3/caches/{cacheName}`, so append these directly to the base URL to avoid path duplication.
 
 ### IMPORTANT: Use OpenAPI Schema
 
@@ -97,7 +99,8 @@ Composite key for purchased products:
 
 ## Cache Configuration
 
-Your implementation must create two caches on startup.
+Your implementation MUST create two caches on startup, if they do not already exist.
+You MUST use cache configurations available in inmemory-catalogue-quarkus/src/main/resources
 
 ### Cache 1: catalogue-table-store
 
@@ -137,6 +140,11 @@ Consult the OpenAPI schema for exact endpoints. The typical flow:
    - Body: XML configuration with placeholders replaced
    - 200 → Success
    - 409 or 400 with "already exists" → Race condition, safe to ignore
+
+3. CRITICAL: Trigger reindex after cache creation
+   - POST to /_reindex endpoint (see section 5 below)
+   - SQL Store caches don't auto-populate indexes
+   - Without this step, all queries will return empty results!
 ```
 
 ## Critical Implementation Details
@@ -145,11 +153,16 @@ Consult the OpenAPI schema for exact endpoints. The typical flow:
 
 Most HTTP client libraries default to MD5 for digest auth. **You MUST specify SHA-256**:
 
-Example configuration patterns:
-```javascript
-// Node.js with digest-fetch
-new DigestClient(username, password, { algorithm: 'SHA-256' })
-```
+**IMPORTANT: Use well-tested digest authentication libraries instead of implementing it yourself.**
+
+Recommended libraries:
+- **Node.js**: `digest-fetch` - `new DigestClient('admin', 'secret', { algorithm: 'SHA-256' })`
+- **Python**: `requests` with `HTTPDigestAuth` - `auth=HTTPDigestAuth('admin', 'secret')`
+- **Go**: `github.com/icholy/digest`
+- **Java**: Apache HttpClient with DigestScheme
+- **curl**: `curl --digest -u admin:secret`
+
+Custom implementations often fail with errors like `400 - COM00501: Expected padding`. If curl works but your code doesn't, your digest auth implementation is likely the issue.
 
 ### 2. Ickle Query Syntax
 
@@ -245,17 +258,26 @@ Returns: Integer (JSON format) representing the number of entries.
 
 ### 5. Reindexing
 
-**Use the OpenAPI schema to find the `reindex` operation.**
+**CRITICAL: SQL Store caches require manual reindexing after creation.**
 
-Trigger after cache creation or if search results seem incomplete.
+SQL Store caches with indexing enabled do not automatically populate search indexes from the database. After creating a cache, you **must** trigger a reindex via openAPI endpoint, or all queries will return empty results (except exact key lookups).
 
-Query parameters (from OpenAPI schema):
-- `local` (optional): Whether to run reindex locally only
-- `mode` (optional): 'sync' (default) or 'async'
+**Example**:
+```bash
+curl --digest -u admin:secret -X POST \
+  "http://localhost:11222/rest/v3/caches/catalogue-table-store/_reindex"
+```
+
+**When to reindex**:
+- REQUIRED: Immediately after creating a new SQL Store cache
+- Optional: If search results seem incomplete or stale
+- Optional: After database schema changes
+
+**Common mistake**: Using the wrong endpoint like `/search/indexes?action=reindex` (returns "Resource not found"). The correct endpoint from the OpenAPI schema is `/_reindex`.
 
 ## Required API Endpoints
 
-Your client application should expose these REST endpoints (default port: 8180):
+Your inmemory application should expose these REST endpoints (default port: 8180):
 
 ### GET /health
 
@@ -482,26 +504,25 @@ curl "http://localhost:8180/sales?country=Spain"
 
 3. **Digest Auth without SHA-256**: Most libraries default to MD5. Must explicitly specify SHA-256.
 
-4. **Wrong Query Syntax**: Ickle is NOT SQL. Full-text search requires `name: (+'term')` format.
+4. **Custom Digest Auth Implementation**: Use proven libraries (digest-fetch, HTTPDigestAuth, etc.) instead of implementing yourself. Custom implementations often fail with errors like `400 - COM00501: Expected padding`.
 
-5. **Large max_results**: Use 10000 or less, not MAX_INT.
+5. **Wrong Query Syntax**: Ickle is NOT SQL. Full-text search requires `name: (+'term')` format.
 
-6. **Missing Quotes in Queries**: `name: (+Party)` fails, must be `name: (+'Party')`
+6. **Large max_results**: Use 10000 or less, not MAX_INT.
 
-7. **Not Checking Cache Existence**: Always check if cache exists (HEAD returns 200 or 204) before creating to avoid errors.
+7. **Missing Quotes in Queries**: `name: (+Party)` fails, must be `name: (+'Party')`
 
-8. **Forgetting to Reindex**: After cache creation, trigger reindex to populate search indexes.
+8. **Not Checking Cache Existence**: Always check if cache exists (HEAD returns 200 or 204) before creating to avoid errors.
 
-9. **Wrong Content-Type**: Cache creation requires `Content-Type: application/xml`, query POST requires `Content-Type: application/json`
+9. **Forgetting to Reindex**: SQL Store caches REQUIRE manual reindexing after creation. Without this, queries return empty results. Use the correct endpoint: `POST /_reindex` (not `/search/indexes?action=reindex`).
+
+10. **Wrong Reindex Endpoint**: The correct endpoint is `/_reindex`, not `/search/indexes?action=reindex`. Check the OpenAPI schema for the exact path.
+
+11. **Wrong Content-Type**: Cache creation requires `Content-Type: application/xml`, query POST requires `Content-Type: application/json`
 
 ## Reference Implementations
 
 Study these for language-specific examples:
-
-- **Go**: `inmemory-catalogue-go/`
-  - Uses REST API v3 with OpenAPI schema
-  - Custom Digest Auth implementation with SHA-256
-  - Reference for proper endpoint discovery
 
 - **Java/Quarkus**: `inmemory-catalogue-quarkus/`
   - Uses Infinispan HotRod client (not REST)
@@ -510,12 +531,6 @@ Study these for language-specific examples:
 - **Java/Spring Boot**: `inmemory-catalogue-spring-boot/`
   - Similar to Quarkus implementation
   - Shows Spring integration patterns
-
-- **Node.js/Express**: `inmemory-catalogue-nodejs/`
-  - Uses REST API v3 with POST method for queries (recommended approach)
-  - Custom Digest Auth implementation with SHA-256
-  - Shows proper error handling and OpenAPI integration
-  - Reference for REST endpoint patterns
 
 ## Additional Resources
 

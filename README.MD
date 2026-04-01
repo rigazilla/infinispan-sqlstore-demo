@@ -51,5 +51,16 @@ This demo provides multiple implementations of the in-memory catalogue service:
 
 - **inmemory-catalogue-quarkus** - Quarkus implementation (HotRod client)
 - **inmemory-catalogue-spring-boot** - Spring Boot 3 implementation (HotRod client)
+- **inmemory-catalogue-nodejs** - Node.js/Express implementation (REST API v3) ⭐ NEW
 
 Refer to each directory's README for specific setup instructions.
+
+### Quick Start - Node.js Implementation
+
+```shell
+cd inmemory-catalogue-nodejs
+npm install
+npm start
+```
+
+The service runs on **http://localhost:8180**
