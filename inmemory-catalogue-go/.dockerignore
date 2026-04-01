@@ -1,0 +1,13 @@
+# Binaries
+inmemory-catalogue-go
+
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+
+# Build artifacts
+*.test
+*.out
