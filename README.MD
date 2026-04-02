@@ -35,7 +35,21 @@ OpenAPI's language-agnostic nature enables applications to be written in any pro
 
 ## Vibe Coding
 
-Tell your coding assistant to read the instructions in the [AI_CODING_INMEMORY_CATALOG.md](AI_CODING_INMEMORY_CATALOG.md) and ask them to vibe-code an inmemory catalog application in your preferred programming language using the already available Spring Boot and Quarkus implementations as an additional reference.
+Tell your coding assistant to read the instructions in the [AI_CODING_INMEMORY_CATALOG.md](AI_CODING_INMEMORY_CATALOG.md) and ask them to vibe-code an In-memory catalog application in your preferred programming language using the already available Spring Boot and Quarkus implementations as an additional reference.
+
+### Example
+
+An example of vibe-coded In-memory Catalog implementation in Go is available [here](https://github.com/rigazilla/infinispan-sqlstore-demo/tree/inmemory-go) and it's the result of a simple session where Claude has been asked to:
+
+1. Analyzed the current status of the project
+2. Read the AI .md guide
+3. Implement a Go In-memory Catalog, using the existent implementations as reference
+4. Test the implementation
+
+Below a screen cast of the session.
+
+![Demo](media/demo.gif)
+
 
 ## Testing
 
